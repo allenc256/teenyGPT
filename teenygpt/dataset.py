@@ -1,9 +1,10 @@
 import random
 from dataclasses import dataclass
-from .config import DatasetConfig
 
-import torch
 import sentencepiece as spm  # type: ignore
+import torch
+
+from .config import DatasetConfig
 
 
 class Encoder:
@@ -206,12 +207,7 @@ def create_datasets(config: DatasetConfig) -> Datasets:
         text = f.read()
 
     # Create the encoder.
-    if config.sentencepiece_model_file is not None:
-        encoder: Encoder = SentencePieceEncoder(
-            spm.SentencePieceProcessor(model_file=config.sentencepiece_model_file)
-        )
-    else:
-        encoder = CharEncoder(text)
+    encoder = _create_encoder(text, config)
 
     # Encode the text.
     tokens = encoder.encode(text)
@@ -247,4 +243,13 @@ def create_datasets(config: DatasetConfig) -> Datasets:
         train=Dataset(torch.stack(chunks_train)),
         val=Dataset(torch.stack(chunks_val)),
         test=Dataset(torch.stack(chunks_test)),
+    )
+
+
+def _create_encoder(text: str, config: DatasetConfig) -> Encoder:
+    if config.sentencepiece_model_file is None:
+        return CharEncoder(text)
+
+    return SentencePieceEncoder(
+        spm.SentencePieceProcessor(model_file=config.sentencepiece_model_file)
     )

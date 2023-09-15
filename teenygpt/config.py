@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import configparser
+from dataclasses import dataclass
 
 
 @dataclass
