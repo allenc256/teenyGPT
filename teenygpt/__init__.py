@@ -1,4 +1,4 @@
-from .config import Config  # noqa
+from .config import DatasetConfig, ModelConfig, TrainConfig  # noqa
 from .dataset import (
     Dataset,  # noqa
     Encoder,  # noqa
@@ -6,5 +6,6 @@ from .dataset import (
     SentencePieceEncoder,  # noqa
     create_datasets,  # noqa
 )
-from .model import Model, NaiveModel, AttentionModel  # noqa
-from .model_bkitano import LlamaModel  # noqa
+from .model import Model, NaiveModel, TransformerModel  # noqa
+from .train import Trainer  # noqa
+from .util import init_pytorch, init_from_config  # noqa
