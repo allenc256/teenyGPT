@@ -24,6 +24,8 @@ def init_from_config(config_file: str) -> tuple[Datasets, Model, TrainConfig]:
     Utility method for initializing datasets, model, and training config from a
     config file.
     """
+    init_pytorch()
+
     cp = configparser.ConfigParser()
     cp.read(config_file)
     dataset_config = DatasetConfig.parse(cp["dataset"])

@@ -36,19 +36,14 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# Setup pytorch global settings.
-teenygpt.init_pytorch()
-
-# Load config & datasets.
+# Initialization
 datasets, model, train_config = teenygpt.init_from_config(args.config)
 
 # Load model checkpoint.
 if train_config.checkpoint_file is None:
-    print("No model to load, since checkpoint file is unspecified in config.")
-    exit(-1)
-else:
-    checkpoint = torch.load(train_config.checkpoint_file)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    raise RuntimeError("checkpoint_file must be specified in config")
+checkpoint = torch.load(train_config.checkpoint_file)
+model.load_state_dict(checkpoint["model_state_dict"])
 
 # Generate examples.
 dataset = getattr(datasets, args.split)

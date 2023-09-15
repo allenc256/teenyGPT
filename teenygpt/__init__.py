@@ -8,4 +8,4 @@ from .dataset import (
 )
 from .model import Model, NaiveModel, TransformerModel  # noqa
 from .train import Trainer  # noqa
-from .util import init_pytorch, init_from_config  # noqa
+from .util import init_from_config  # noqa

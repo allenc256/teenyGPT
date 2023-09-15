@@ -15,10 +15,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# Setup pytorch global settings.
-teenygpt.init_pytorch()
-
-# Load config & datasets.
+# Initialization
 datasets, model, train_config = teenygpt.init_from_config(args.config)
 
 # Create model & run training.
