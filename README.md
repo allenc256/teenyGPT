@@ -4,7 +4,7 @@ A small library which implements a Transformer from scratch using pytorch. This
 project is only meant to serve as a demonstration only and is not optimized for
 training large models on large datasets.
 
-# Dependencies
+## Dependencies
 
 Dependencies are listed in `requirements.txt` and may be installed via `pip`:
 
@@ -12,7 +12,7 @@ Dependencies are listed in `requirements.txt` and may be installed via `pip`:
 pip install -r requirements.txt
 ```
 
-# Usage
+## Usage
 
 This project includes a training script (`train.py`) that can be executed as so:
 
@@ -73,7 +73,7 @@ Marry, so I know much my mother,
 But ere to lordshing, spirits of my y lord.
 ```
 
-# Model Details
+## Model Details
 
 The following design choices were made in the design of the model:
 
@@ -91,7 +91,7 @@ The following design choices were made in the design of the model:
   train. In practice, many production-scale modules such as Llama 2 seem to
   favor pre-LN.
 
-# References
+## References
 
 The following papers, codebases, and blog posts were referenced when building
 this project.
