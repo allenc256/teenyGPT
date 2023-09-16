@@ -98,6 +98,8 @@ class Trainer:
     def _save_checkpoint(self) -> None:
         if self.config.checkpoint_file is None:
             return
+        if self.iteration == 0:
+            return
 
         # Make parent dirs if necessary.
         os.makedirs(os.path.dirname(self.config.checkpoint_file), exist_ok=True)
