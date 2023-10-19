@@ -88,15 +88,17 @@ The following design choices were made in the design of the model:
   train. In practice, many production-scale modules such as Llama 2 seem to
   favor pre-LN.
 * The following positional encoding implementations are provided:
-  * [ALiBi](https://arxiv.org/abs/2108.12409) - purports to generalize well to
-    arbitrary sequence lengths (e.g., ones longer than those encountered during
-    training). Parameterless, and appears to have slightly worse but
-    competitive performance to other schemes.
-  * Sinusoidal - the original positional encoding proposed in
-    ["Attention is All You Need"](https://arxiv.org/abs/1706.03762).
-  * Learned - positional encoding via a learned embedding over position
-    indices.
-  * None - no positional encoding.
+  * `ALIBI` - "Attention w/ Linear Biases" encoding scheme proposed in
+    https://arxiv.org/abs/2108.12409. Parameterless and purports to generalize
+    well to arbitrary sequence lengths (e.g., inference on sequences longer
+    than those encountered during training).
+  * `SINUSOIDAL` - the original positional encoding proposed in
+    ["Attention is All You Need"](https://arxiv.org/abs/1706.03762). Also
+    parameterless, but purportedly generalizes less well than ALiBi.
+  * `LEARNED` - positional encoding via a learned embedding over position
+    indices. Provides the best performance, but requires learning additional
+    parameters and does not generalize to new sequence lengths.
+  * `NONE` - no positional encoding.
 
 ## References
 
