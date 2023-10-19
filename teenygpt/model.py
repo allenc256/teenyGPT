@@ -7,7 +7,7 @@ from torch import nn
 from torch.nn import functional as F
 from tqdm import tqdm  # type: ignore
 
-from .config import ModelConfig, TrainConfig
+from .config import ModelConfig, TrainConfig, PositionalEncoding
 from .dataset import Dataset
 
 
@@ -174,7 +174,7 @@ class AttentionBlock(nn.Module):
     computing attention efficiently via optimized kernels.
     """
 
-    _cached_alibi_mask: torch.Tensor | None = None
+    _cached_mask: torch.Tensor | None = None
 
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
@@ -210,37 +210,43 @@ class AttentionBlock(nn.Module):
 
         return x
 
-    def _alibi_mask(self, n_context: int) -> torch.Tensor:
+    def _attention_mask(self, n_context: int) -> torch.Tensor:
         """
-        Generates an ALiBi mask with the given context window size. This function will
-        attempt to cache masks on repeated calls.
+        Retrieves an attention mask for the specified context window.
+
+        This function will attempt to cache masks on repeated calls.
 
         Args:
             n_context: The context window size to generate a mask for.
 
         Returns:
-            An ALiBi mask tensor with shape ``(n_attn_heads, n_context, n_context)``.
+            An attention mask tensor with shape ``(n_attn_heads, n_context, n_context)``
+            (ALiBi) or ``(1, n_context, n_context)`` (default mask).
         """
         # If there is no cached mask, generate a new one and return it.
-        if self._cached_alibi_mask is None:
-            self._cached_alibi_mask = _generate_alibi_mask(
-                n_context, self.config.n_attn_heads
-            )
-            return self._cached_alibi_mask
+        if self._cached_mask is None:
+            self._cached_mask = self._generate_mask(n_context)
+            return self._cached_mask
 
         # Otherwise, make sure the cached mask is big enough (if it isn't, generate a
         # new larger cached mask).
-        n_context_cached = self._cached_alibi_mask.size(-1)
+        n_context_cached = self._cached_mask.size(-1)
         if n_context_cached < n_context:
-            self._cached_alibi_mask = _generate_alibi_mask(
-                n_context, self.config.n_attn_heads
-            )
+            self._cached_mask = self._generate_mask(n_context)
             # N.B., the following spurious assert is needed to make mypy happy :-(
-            assert self._cached_alibi_mask is not None
-            return self._cached_alibi_mask
+            assert self._cached_mask is not None
+            return self._cached_mask
 
         # Return the cached mask, but sized down to the input context length.
-        return self._cached_alibi_mask[:, :n_context, :n_context]
+        return self._cached_mask[:, :n_context, :n_context]
+
+    def _generate_mask(self, n_context: int) -> torch.Tensor:
+        if self.config.positional_encoding == PositionalEncoding.ALIBI:
+            return _generate_alibi_mask(n_context, self.config.n_attn_heads)
+        elif self.config.positional_encoding == PositionalEncoding.NONE:
+            return _generate_default_mask(n_context)
+        else:
+            raise ValueError(f"unsupported encoding: {self.config.positional_encoding}")
 
     def _multihead_attention(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -274,7 +280,7 @@ class AttentionBlock(nn.Module):
             q_proj_heads,
             k_proj_heads,
             v_proj_heads,
-            attn_mask=self._alibi_mask(n_context),
+            attn_mask=self._attention_mask(n_context),
             dropout_p=self.config.p_dropout,
         )
 
@@ -310,7 +316,7 @@ class TransformerModel(Model):
         return x
 
 
-def _generate_alibi_mask(n_context: int, n_heads: int):
+def _generate_alibi_mask(n_context: int, n_heads: int) -> torch.Tensor:
     """
     Generates an ALiBi attention mask.
 
@@ -326,7 +332,7 @@ def _generate_alibi_mask(n_context: int, n_heads: int):
     return torch.stack([base_mask * (ratio ** (i + 1)) for i in range(n_heads)])
 
 
-def _generate_alibi_mask_single_head(n_context):
+def _generate_alibi_mask_single_head(n_context: int) -> torch.Tensor:
     def _el(i, j):
         if i > j:
             return -math.inf
@@ -336,3 +342,25 @@ def _generate_alibi_mask_single_head(n_context):
     return torch.tensor(
         [[_el(i, j) for i in range(n_context)] for j in range(n_context)]
     )
+
+
+def _generate_default_mask(n_context: int) -> torch.Tensor:
+    """
+    Generates a default attention mask.
+
+    This should generate the same mask as
+    ``torch.nn.Transformer.generate_square_subsequent_mask``. However, the
+    implementation of the above function in PyTorch 2.10 currently seems to have a bug
+    which it to not respect the default device and dtype correctly. Therefore,
+    we have our own implementation.
+
+    Args:
+        n_context: The size of the context window to generate a mask for.
+
+    Returns:
+        An attention mask tensor with shape ``(1, n_context, n_context)``.
+    """
+    m = torch.full((n_context, n_context), -torch.inf)
+    m = torch.triu(m, diagonal=1)
+    m = m.unsqueeze(0)
+    return m

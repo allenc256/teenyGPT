@@ -1,5 +1,6 @@
 import configparser
 from dataclasses import dataclass
+from enum import Enum
 
 
 @dataclass
@@ -50,6 +51,14 @@ class DatasetConfig:
         )
 
 
+class PositionalEncoding(Enum):
+    NONE = 0
+    """No positional encoding. """
+
+    ALIBI = 1
+    """ALiBI encoding, as per https://arxiv.org/abs/2108.12409."""
+
+
 @dataclass
 class ModelConfig:
     """
@@ -62,6 +71,7 @@ class ModelConfig:
         n_attn_heads: The number of attention heads.
         n_attn_layers: The number attention layers.
         p_dropout: The dropout probability.
+        positional_encoding: The positional encoding to use.
     """
 
     n_dim: int
@@ -69,6 +79,7 @@ class ModelConfig:
     n_attn_heads: int
     n_attn_layers: int
     p_dropout: float
+    positional_encoding: PositionalEncoding
 
     @staticmethod
     def parse(section: configparser.SectionProxy, n_vocab: int) -> "ModelConfig":
@@ -81,6 +92,7 @@ class ModelConfig:
             n_attn_heads=int(section.get("n_attn_heads")),
             n_attn_layers=int(section.get("n_attn_layers")),
             p_dropout=float(section.get("p_dropout")),
+            positional_encoding=PositionalEncoding[section.get("positional_encoding")],
         )
 
 
