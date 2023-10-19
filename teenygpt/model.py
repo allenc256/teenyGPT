@@ -175,7 +175,7 @@ class AttentionBlock(nn.Module):
     computing attention efficiently via optimized kernels.
     """
 
-    _cached_mask: torch.Tensor | None = None
+    _attention_mask: torch.Tensor
 
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
@@ -202,6 +202,9 @@ class AttentionBlock(nn.Module):
         # Feed-forward network.
         self.ffn = FeedForwardBlock(config.n_dim)
 
+        # Generate attention mask.
+        self._attention_mask = self._generate_attention_mask(config)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Attention residual block.
         x = x + self._multihead_attention(self.norm_1(x))
@@ -211,42 +214,16 @@ class AttentionBlock(nn.Module):
 
         return x
 
-    def _attention_mask(self, n_context: int) -> torch.Tensor:
-        """
-        Retrieves an attention mask for the specified context window.
-
-        This function will attempt to cache masks on repeated calls.
-
-        Args:
-            n_context: The context window size to generate a mask for.
-
-        Returns:
-            An attention mask tensor with shape ``(n_attn_heads, n_context, n_context)``
-            (ALiBi) or ``(1, n_context, n_context)`` (default mask).
-        """
-        # If there is no cached mask, generate a new one and return it.
-        if self._cached_mask is None:
-            self._cached_mask = self._generate_mask(n_context)
-            return self._cached_mask
-
-        # Otherwise, make sure the cached mask is big enough (if it isn't, generate a
-        # new larger cached mask).
-        n_context_cached = self._cached_mask.size(-1)
-        if n_context_cached < n_context:
-            self._cached_mask = self._generate_mask(n_context)
-            # N.B., the following spurious assert is needed to make mypy happy :-(
-            assert self._cached_mask is not None
-            return self._cached_mask
-
-        # Return the cached mask, but sized down to the input context length.
-        return self._cached_mask[:, :n_context, :n_context]
-
-    def _generate_mask(self, n_context: int) -> torch.Tensor:
+    def _generate_attention_mask(self, config: ModelConfig) -> torch.Tensor:
         match self.config.positional_encoding:
             case PositionalEncoding.ALIBI:
-                return _generate_alibi_mask(n_context, self.config.n_attn_heads)
-            case PositionalEncoding.NONE | PositionalEncoding.SINUSOIDAL:
-                return _generate_default_mask(n_context)
+                return _generate_alibi_mask(config.n_context_max, config.n_attn_heads)
+            case (
+                PositionalEncoding.NONE
+                | PositionalEncoding.SINUSOIDAL
+                | PositionalEncoding.LEARNED
+            ):
+                return _generate_default_mask(config.n_context_max)
             case _:
                 raise ValueError(
                     f"unsupported encoding: {self.config.positional_encoding}"
@@ -284,7 +261,7 @@ class AttentionBlock(nn.Module):
             q_proj_heads,
             k_proj_heads,
             v_proj_heads,
-            attn_mask=self._attention_mask(n_context),
+            attn_mask=self._attention_mask[:, :n_context, :n_context],
             dropout_p=self.config.p_dropout,
         )
 
@@ -301,33 +278,27 @@ class SinusoidalPositionalEncoding(nn.Module):
     paper (https://arxiv.org/abs/1706.03762).
     """
 
-    def __init__(self, n_dim: int, n_context_max: int = 10000) -> None:
+    def __init__(self, n_context_max: int, n_dim: int) -> None:
         super().__init__()
-        self.encoding = self._generate_encoding(n_dim, n_context_max)
+        self.encoding = _generate_sinusoidal_encoding(n_context_max, n_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x + self.encoding[:, : x.size(1), :]
+        n_batch, n_context, n_dim = x.shape
+        return x + self.encoding[:n_context, :].unsqueeze(0)
 
-    def _generate_encoding(self, n_dim: int, n_context_max: int) -> torch.Tensor:
-        # Verify dimension is evenly divisible by 2.
-        n_dim_half = n_dim // 2
-        if n_dim != n_dim_half * 2:
-            raise ValueError("expected dimension to be divisible by two")
 
-        # Generate points to evaluate sin/cos, with shape (n_context_max, n_dim_half).
-        periods = n_context_max ** (np.arange(n_dim_half) * 2 / n_dim)
-        pos = np.arange(n_context_max)
-        p = pos.reshape(-1, 1) / periods.reshape((1, -1))
+class LearnedPositionalEncoding(nn.Module):
+    """
+    Positional encoding via a learned embedding.
+    """
 
-        # Evaluate sin/cos at each point.
-        p_sin = np.sin(p)
-        p_cos = np.cos(p)
+    def __init__(self, n_context_max: int, n_dim: int) -> None:
+        super().__init__()
+        self.embedding = nn.Embedding(n_context_max, n_dim)
+        self.positions = torch.arange(n_context_max, dtype=torch.int64).unsqueeze(0)
 
-        # Interleave sin/cos, resulting in shape (1, n_context_max, n_dim).
-        p_interleaved = (
-            np.concatenate([p_sin.T, p_cos.T], axis=-1).reshape(n_dim, n_context_max).T
-        )
-        return torch.tensor(p_interleaved, dtype=torch.get_default_dtype()).unsqueeze(0)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.embedding(self.positions[:, : x.size(1)])
 
 
 class TransformerModel(Model):
@@ -340,10 +311,20 @@ class TransformerModel(Model):
     def __init__(self, config: ModelConfig, name: str = "TransformerModel") -> None:
         super().__init__(config, name)
         self.embedding = nn.Embedding(config.n_vocab, config.n_dim)
-        if config.positional_encoding == PositionalEncoding.SINUSOIDAL:
-            self.positional_encoding = SinusoidalPositionalEncoding(config.n_dim)
-        else:
-            self.positional_encoding = nn.Identity()
+        self.unembedding = nn.Linear(config.n_dim, config.n_vocab)
+
+        match config.positional_encoding:
+            case PositionalEncoding.SINUSOIDAL:
+                self.positional_encoding = SinusoidalPositionalEncoding(
+                    config.n_context_max, config.n_dim
+                )
+            case PositionalEncoding.LEARNED:
+                self.positional_encoding = LearnedPositionalEncoding(
+                    config.n_context_max, config.n_dim
+                )
+            case _:
+                self.positional_encoding = nn.Identity()
+
         self.attention_blocks = nn.Sequential(
             OrderedDict(
                 [
@@ -352,7 +333,6 @@ class TransformerModel(Model):
                 ]
             )
         )
-        self.unembedding = nn.Linear(config.n_dim, config.n_vocab)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         x = self.embedding(inputs)
@@ -410,3 +390,37 @@ def _generate_default_mask(n_context: int) -> torch.Tensor:
     m = torch.triu(m, diagonal=1)
     m = m.unsqueeze(0)
     return m
+
+
+def _generate_sinusoidal_encoding(n_context_max: int, n_dim: int) -> torch.Tensor:
+    """
+    Generates a sinusoidal positional encoding as per the original Transformer
+    paper (https://arxiv.org/abs/1706.03762).
+
+    Args:
+        n_context_max: The maximum context window length.
+        n_dim: The model dimension that the encoding should be generated for.
+
+    Returns:
+        A tensor with shape ``(n_context_max, n_dim)`` containing the encoding.
+    """
+
+    # Verify dimension is evenly divisible by 2.
+    n_dim_half = n_dim // 2
+    if n_dim != n_dim_half * 2:
+        raise ValueError("expected dimension to be divisible by two")
+
+    # Generate points to evaluate sin/cos, with shape (n_context_max, n_dim_half).
+    periods = 10000 ** (np.arange(n_dim_half) * 2 / n_dim)
+    pos = np.arange(n_context_max)
+    p = pos.reshape(-1, 1) / periods.reshape((1, -1))
+
+    # Evaluate sin/cos at each point.
+    p_sin = np.sin(p)
+    p_cos = np.cos(p)
+
+    # Interleave sin/cos, resulting in shape (n_context_max, n_dim).
+    p_interleaved = (
+        np.concatenate([p_sin.T, p_cos.T], axis=-1).reshape(n_dim, n_context_max).T
+    )
+    return torch.tensor(p_interleaved, dtype=torch.get_default_dtype())

@@ -61,6 +61,9 @@ class PositionalEncoding(Enum):
     SINUSOIDAL = 2
     """Sinusoidal encoding, as per https://arxiv.org/abs/1706.03762."""
 
+    LEARNED = 3
+    """Learned positional embedding."""
+
 
 @dataclass
 class ModelConfig:
@@ -73,6 +76,7 @@ class ModelConfig:
         n_vocab: The maximum vocabulary size.
         n_attn_heads: The number of attention heads.
         n_attn_layers: The number attention layers.
+        n_context_max: The maximum context length that the model can handle.
         p_dropout: The dropout probability.
         positional_encoding: The positional encoding to use.
     """
@@ -81,6 +85,7 @@ class ModelConfig:
     n_vocab: int
     n_attn_heads: int
     n_attn_layers: int
+    n_context_max: int
     p_dropout: float
     positional_encoding: PositionalEncoding
 
@@ -94,6 +99,7 @@ class ModelConfig:
             n_vocab=n_vocab,
             n_attn_heads=int(section.get("n_attn_heads")),
             n_attn_layers=int(section.get("n_attn_layers")),
+            n_context_max=int(section.get("n_context_max")),
             p_dropout=float(section.get("p_dropout")),
             positional_encoding=PositionalEncoding[section.get("positional_encoding")],
         )
