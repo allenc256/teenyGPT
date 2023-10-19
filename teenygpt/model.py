@@ -2,6 +2,7 @@ import math
 from collections import OrderedDict
 from contextlib import contextmanager
 
+import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -241,12 +242,15 @@ class AttentionBlock(nn.Module):
         return self._cached_mask[:, :n_context, :n_context]
 
     def _generate_mask(self, n_context: int) -> torch.Tensor:
-        if self.config.positional_encoding == PositionalEncoding.ALIBI:
-            return _generate_alibi_mask(n_context, self.config.n_attn_heads)
-        elif self.config.positional_encoding == PositionalEncoding.NONE:
-            return _generate_default_mask(n_context)
-        else:
-            raise ValueError(f"unsupported encoding: {self.config.positional_encoding}")
+        match self.config.positional_encoding:
+            case PositionalEncoding.ALIBI:
+                return _generate_alibi_mask(n_context, self.config.n_attn_heads)
+            case PositionalEncoding.NONE | PositionalEncoding.SINUSOIDAL:
+                return _generate_default_mask(n_context)
+            case _:
+                raise ValueError(
+                    f"unsupported encoding: {self.config.positional_encoding}"
+                )
 
     def _multihead_attention(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -291,14 +295,55 @@ class AttentionBlock(nn.Module):
         return self.linear_o(o)
 
 
+class SinusoidalPositionalEncoding(nn.Module):
+    """
+    Sinusoidal positional encoding as per the original Transformer
+    paper (https://arxiv.org/abs/1706.03762).
+    """
+
+    def __init__(self, n_dim: int, n_context_max: int = 10000) -> None:
+        super().__init__()
+        self.encoding = self._generate_encoding(n_dim, n_context_max)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.encoding[:, : x.size(1), :]
+
+    def _generate_encoding(self, n_dim: int, n_context_max: int) -> torch.Tensor:
+        # Verify dimension is evenly divisible by 2.
+        n_dim_half = n_dim // 2
+        if n_dim != n_dim_half * 2:
+            raise ValueError("expected dimension to be divisible by two")
+
+        # Generate points to evaluate sin/cos, with shape (n_context_max, n_dim_half).
+        periods = n_context_max ** (np.arange(n_dim_half) * 2 / n_dim)
+        pos = np.arange(n_context_max)
+        p = pos.reshape(-1, 1) / periods.reshape((1, -1))
+
+        # Evaluate sin/cos at each point.
+        p_sin = np.sin(p)
+        p_cos = np.cos(p)
+
+        # Interleave sin/cos, resulting in shape (1, n_context_max, n_dim).
+        p_interleaved = (
+            np.concatenate([p_sin.T, p_cos.T], axis=-1).reshape(n_dim, n_context_max).T
+        )
+        return torch.tensor(p_interleaved, dtype=torch.get_default_dtype()).unsqueeze(0)
+
+
 class TransformerModel(Model):
     """
     A transformer model.
     """
 
+    positional_encoding: nn.Module
+
     def __init__(self, config: ModelConfig, name: str = "TransformerModel") -> None:
         super().__init__(config, name)
         self.embedding = nn.Embedding(config.n_vocab, config.n_dim)
+        if config.positional_encoding == PositionalEncoding.SINUSOIDAL:
+            self.positional_encoding = SinusoidalPositionalEncoding(config.n_dim)
+        else:
+            self.positional_encoding = nn.Identity()
         self.attention_blocks = nn.Sequential(
             OrderedDict(
                 [
@@ -311,6 +356,7 @@ class TransformerModel(Model):
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         x = self.embedding(inputs)
+        x = self.positional_encoding(x)
         x = self.attention_blocks(x)
         x = self.unembedding(x)
         return x

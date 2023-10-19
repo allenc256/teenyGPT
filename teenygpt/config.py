@@ -58,6 +58,9 @@ class PositionalEncoding(Enum):
     ALIBI = 1
     """ALiBI encoding, as per https://arxiv.org/abs/2108.12409."""
 
+    SINUSOIDAL = 2
+    """Sinusoidal encoding, as per https://arxiv.org/abs/1706.03762."""
+
 
 @dataclass
 class ModelConfig:
