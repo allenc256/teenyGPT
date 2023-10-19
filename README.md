@@ -89,7 +89,9 @@ The following design choices were made in the design of the model:
   favor pre-LN.
 * The following positional encoding implementations are provided:
   * `ALIBI` - "Attention w/ Linear Biases" encoding scheme proposed in
-    https://arxiv.org/abs/2108.12409. Parameterless and purports to generalize
+    ["Train Short, Test Long: Attention with Linear Biases Enables Input Length
+    Extrapolation"](https://arxiv.org/abs/2108.12409). Parameterless and purports
+    to generalize
     well to arbitrary sequence lengths (e.g., inference on sequences longer
     than those encountered during training).
   * `SINUSOIDAL` - the original positional encoding proposed in
