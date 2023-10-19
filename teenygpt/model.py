@@ -161,11 +161,6 @@ class AttentionBlock(nn.Module):
     """
     The multi-head attention block.
 
-    This multi-head attention implementation uses ALiBi for its positional encoding (see
-    https://arxiv.org/abs/2108.12409 for more details). ALiBi was chosen over potential
-    alternatives for its purported ability to better generalize across arbitrary context
-    lengths.
-
     We use a pre-layer-norm (as opposed to post-layer-norm) architecture, as current
     research suggests that pre-LN architectures are easier to train (e.g., see
     https://arxiv.org/abs/2304.14802). Additionally, in practice, both Llama 2 and GPT

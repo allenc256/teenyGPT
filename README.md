@@ -80,9 +80,6 @@ The following design choices were made in the design of the model:
 * Attention is computed using the pytorch function
   `scaled_dot_product_attention` to take advantage of pytorch-optimized kernels
   for attention.
-* Positional encoding uses [ALiBi](https://arxiv.org/abs/2108.12409) as it has a
-  simple implementation and purports to generalize well to arbitrary context
-  lengths beyond training.
 * Feed-forward networks use the Swish GLU variant described in ["GLU Variants
   Improve Transformer"](https://arxiv.org/abs/2002.05202) as this appears to
   improve performance (and is what is used in Llama 2).
@@ -90,6 +87,16 @@ The following design choices were made in the design of the model:
   [research](https://arxiv.org/abs/2002.04745) suggests pre-LN is easier to
   train. In practice, many production-scale modules such as Llama 2 seem to
   favor pre-LN.
+* The following positional encoding implementations are provided:
+  * [ALiBi](https://arxiv.org/abs/2108.12409) - purports to generalize well to
+    arbitrary sequence lengths (e.g., ones longer than those encountered during
+    training). Parameterless, and appears to have slightly worse but
+    competitive performance to other schemes.
+  * Sinusoidal - the original positional encoding proposed in
+    ["Attention is All You Need"](https://arxiv.org/abs/1706.03762).
+  * Learned - positional encoding via a learned embedding over position
+    indices.
+  * None - no positional encoding.
 
 ## References
 
