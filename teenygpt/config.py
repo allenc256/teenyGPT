@@ -61,8 +61,11 @@ class PositionalEncoding(Enum):
     SINUSOIDAL = 2
     """Sinusoidal encoding, as per https://arxiv.org/abs/1706.03762."""
 
-    LEARNED = 3
-    """Learned positional embedding."""
+    LEARNED_EMBEDDING = 3
+    """Learned positional encoding via a positional embedding."""
+
+    LEARNED_SINUSOIDAL = 4
+    """Learned positional encoding via sinusoids."""
 
 
 @dataclass

@@ -147,14 +147,15 @@ class FeedForwardBlock(nn.Module):
     simpler FFN schemes.
     """
 
-    def __init__(self, n_dim: int) -> None:
+    def __init__(self, n_dim: int, p_dropout: float) -> None:
         super().__init__()
         self.w1 = nn.Linear(n_dim, n_dim, bias=False)
         self.w2 = nn.Linear(n_dim, n_dim, bias=False)
         self.w3 = nn.Linear(n_dim, n_dim, bias=False)
+        self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.w2(F.silu(self.w1(x)) * self.w3(x))
+        return self.dropout(self.w2(F.silu(self.w1(x)) * self.w3(x)))
 
 
 class AttentionBlock(nn.Module):
@@ -195,7 +196,7 @@ class AttentionBlock(nn.Module):
         self.norm_2 = nn.LayerNorm(config.n_dim)
 
         # Feed-forward network.
-        self.ffn = FeedForwardBlock(config.n_dim)
+        self.ffn = FeedForwardBlock(config.n_dim, config.p_dropout)
 
         # Generate attention mask.
         if config.positional_encoding == PositionalEncoding.ALIBI:
@@ -272,7 +273,7 @@ class SinusoidalPositionalEncoding(nn.Module):
         return x + self.encoding[:n_context, :].unsqueeze(0)
 
 
-class LearnedPositionalEncoding(nn.Module):
+class LearnedEmbeddingPositionalEncoding(nn.Module):
     """
     Positional encoding via a learned embedding.
     """
@@ -285,6 +286,23 @@ class LearnedPositionalEncoding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         n_batch, n_context, n_dim = x.shape
         return x + self.embedding(self.positions[:, :n_context])
+
+
+class LearnedSinusoidalPositionalEncoding(nn.Module):
+    """
+    Learned sinusoidal positional encoding.
+    """
+
+    def __init__(
+        self, n_context_max: int, n_dim: int, n_dim_sinusoid: int = 16
+    ) -> None:
+        super().__init__()
+        self.linear = nn.Linear(n_dim_sinusoid, n_dim)
+        self.positions = _generate_sinusoidal_encoding(n_context_max, n_dim_sinusoid)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        n_batch, n_context, n_dim = x.shape
+        return x + self.linear(self.positions[:n_context, :]).unsqueeze(0)
 
 
 class TransformerModel(Model):
@@ -304,8 +322,12 @@ class TransformerModel(Model):
                 self.positional_encoding = SinusoidalPositionalEncoding(
                     config.n_context_max, config.n_dim
                 )
-            case PositionalEncoding.LEARNED:
-                self.positional_encoding = LearnedPositionalEncoding(
+            case PositionalEncoding.LEARNED_EMBEDDING:
+                self.positional_encoding = LearnedEmbeddingPositionalEncoding(
+                    config.n_context_max, config.n_dim
+                )
+            case PositionalEncoding.LEARNED_SINUSOIDAL:
+                self.positional_encoding = LearnedSinusoidalPositionalEncoding(
                     config.n_context_max, config.n_dim
                 )
             case _:
@@ -320,9 +342,12 @@ class TransformerModel(Model):
             )
         )
 
+        self.dropout = nn.Dropout(config.p_dropout)
+
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         x = self.embedding(inputs)
         x = self.positional_encoding(x)
+        x = self.dropout(x)
         x = self.attention_blocks(x)
         x = self.unembedding(x)
         return x

@@ -97,9 +97,13 @@ The following design choices were made in the design of the model:
   * `SINUSOIDAL` - the original positional encoding proposed in
     ["Attention is All You Need"](https://arxiv.org/abs/1706.03762). Also
     parameterless, but purportedly generalizes less well than ALiBi.
-  * `LEARNED` - positional encoding via a learned embedding over position
-    indices. Provides the best performance, but requires learning additional
-    parameters and does not generalize to new sequence lengths.
+  * `LEARNED_EMBEDDING` - learned positional encoding computed via an embedding
+    over position indices. Provides better performance, but requires learning
+    additional parameters and does not generalize.
+  * `LEARNED_SINUSOIDAL` - learned positional encoding computed via a linear
+    layer over sinusoids. Provides best performance, but requires learning
+    additional parameters. Generalization to arbitrary sequence lengths has not
+    been tested.
   * `NONE` - no positional encoding.
 
 ## References
