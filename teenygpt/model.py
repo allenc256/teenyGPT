@@ -198,7 +198,12 @@ class AttentionBlock(nn.Module):
         self.ffn = FeedForwardBlock(config.n_dim)
 
         # Generate attention mask.
-        self._attention_mask = self._generate_attention_mask(config)
+        if config.positional_encoding == PositionalEncoding.ALIBI:
+            self._attention_mask = _generate_alibi_mask(
+                config.n_context_max, config.n_attn_heads
+            )
+        else:
+            self._attention_mask = _generate_default_mask(config.n_context_max)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Attention residual block.
@@ -208,21 +213,6 @@ class AttentionBlock(nn.Module):
         x = x + self.ffn(self.norm_2(x))
 
         return x
-
-    def _generate_attention_mask(self, config: ModelConfig) -> torch.Tensor:
-        match self.config.positional_encoding:
-            case PositionalEncoding.ALIBI:
-                return _generate_alibi_mask(config.n_context_max, config.n_attn_heads)
-            case (
-                PositionalEncoding.NONE
-                | PositionalEncoding.SINUSOIDAL
-                | PositionalEncoding.LEARNED
-            ):
-                return _generate_default_mask(config.n_context_max)
-            case _:
-                raise ValueError(
-                    f"unsupported encoding: {self.config.positional_encoding}"
-                )
 
     def _multihead_attention(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -293,7 +283,8 @@ class LearnedPositionalEncoding(nn.Module):
         self.positions = torch.arange(n_context_max, dtype=torch.int64).unsqueeze(0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x + self.embedding(self.positions[:, : x.size(1)])
+        n_batch, n_context, n_dim = x.shape
+        return x + self.embedding(self.positions[:, :n_context])
 
 
 class TransformerModel(Model):
