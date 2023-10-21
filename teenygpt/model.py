@@ -172,6 +172,7 @@ class AttentionBlock(nn.Module):
     """
 
     _attention_mask: torch.Tensor
+    _rope_matrix: torch.Tensor | None
 
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
@@ -206,6 +207,14 @@ class AttentionBlock(nn.Module):
         else:
             self._attention_mask = _generate_default_mask(config.n_context_max)
 
+        # Generate RoPE matrix.
+        if config.positional_encoding == PositionalEncoding.ROPE:
+            self._rope_matrix = _generate_rope_matrix(
+                config.n_context_max, self.n_head_dim
+            )
+        else:
+            self._rope_matrix = None
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Attention residual block.
         x = x + self._multihead_attention(self.norm_1(x))
@@ -231,7 +240,8 @@ class AttentionBlock(nn.Module):
         v_proj = self.linear_v(x)
 
         # Rearrange the query, key, and value tensors to have shape
-        # (..., n_window, n_head_dim) so that we can apply scaled_dot_product_attention.
+        # (n_batch, n_attn_heads, n_context, n_head_dim) so that we can apply
+        # scaled_dot_product_attention.
         q_proj_heads = q_proj.view(
             n_batch, n_context, self.config.n_attn_heads, self.n_head_dim
         ).permute(0, 2, 1, 3)
@@ -241,6 +251,16 @@ class AttentionBlock(nn.Module):
         v_proj_heads = v_proj.view(
             n_batch, n_context, self.config.n_attn_heads, self.n_head_dim
         ).permute(0, 2, 1, 3)
+
+        # Apply RoPE matrix if enabled.
+        if self._rope_matrix is not None:
+            q_proj_heads = q_proj_heads.unsqueeze(-1)
+            q_proj_heads = self._rope_matrix @ q_proj_heads
+            q_proj_heads = q_proj_heads.squeeze(-1)
+
+            k_proj_heads = k_proj_heads.unsqueeze(-1)
+            k_proj_heads = self._rope_matrix @ k_proj_heads
+            k_proj_heads = k_proj_heads.squeeze(-1)
 
         # Apply our attention function.
         o_heads = F.scaled_dot_product_attention(
@@ -353,23 +373,23 @@ class TransformerModel(Model):
         return x
 
 
-def _generate_alibi_mask(n_context: int, n_heads: int) -> torch.Tensor:
+def _generate_alibi_mask(n_context_max: int, n_heads: int) -> torch.Tensor:
     """
     Generates an ALiBi attention mask.
 
     Args:
-        n_context: The size of the context window to generate a mask for.
+        n_context_max: The maximum context window length.
         n_heads: The number of attention heads to generate masks for.
 
     Returns:
-        An attention mask tensor with shape ``(n_heads, n_context, n_context)``.
+        An attention mask tensor with shape ``(n_heads, n_context_max, n_context_max)``.
     """
     ratio = 2 ** (-8 / n_heads)
-    base_mask = _generate_alibi_mask_single_head(n_context)
+    base_mask = _generate_alibi_mask_single_head(n_context_max)
     return torch.stack([base_mask * (ratio ** (i + 1)) for i in range(n_heads)])
 
 
-def _generate_alibi_mask_single_head(n_context: int) -> torch.Tensor:
+def _generate_alibi_mask_single_head(n_context_max: int) -> torch.Tensor:
     def _el(i, j):
         if i > j:
             return -math.inf
@@ -377,11 +397,11 @@ def _generate_alibi_mask_single_head(n_context: int) -> torch.Tensor:
             return -abs(i - j)
 
     return torch.tensor(
-        [[_el(i, j) for i in range(n_context)] for j in range(n_context)]
+        [[_el(i, j) for i in range(n_context_max)] for j in range(n_context_max)]
     )
 
 
-def _generate_default_mask(n_context: int) -> torch.Tensor:
+def _generate_default_mask(n_context_max: int) -> torch.Tensor:
     """
     Generates a default attention mask.
 
@@ -392,12 +412,12 @@ def _generate_default_mask(n_context: int) -> torch.Tensor:
     we have our own implementation.
 
     Args:
-        n_context: The size of the context window to generate a mask for.
+        n_context_max: The maximum context window length.
 
     Returns:
-        An attention mask tensor with shape ``(1, n_context, n_context)``.
+        An attention mask tensor with shape ``(1, n_context_max, n_context_max)``.
     """
-    m = torch.full((n_context, n_context), -torch.inf)
+    m = torch.full((n_context_max, n_context_max), -torch.inf)
     m = torch.triu(m, diagonal=1)
     m = m.unsqueeze(0)
     return m
@@ -424,7 +444,7 @@ def _generate_sinusoidal_encoding(n_context_max: int, n_dim: int) -> torch.Tenso
     # Generate points to evaluate sin/cos, with shape (n_context_max, n_dim_half).
     periods = 10000 ** (np.arange(n_dim_half) * 2 / n_dim)
     pos = np.arange(n_context_max)
-    p = pos.reshape(-1, 1) / periods.reshape((1, -1))
+    p = np.outer(pos, 1 / periods)
 
     # Evaluate sin/cos at each point.
     p_sin = np.sin(p)
@@ -435,3 +455,27 @@ def _generate_sinusoidal_encoding(n_context_max: int, n_dim: int) -> torch.Tenso
         np.concatenate([p_sin.T, p_cos.T], axis=-1).reshape(n_dim, n_context_max).T
     )
     return torch.tensor(p_interleaved, dtype=torch.get_default_dtype())
+
+
+def _generate_rope_matrix(n_context_max: int, n_head_dim: int) -> torch.Tensor:
+    """
+    Generates a RoPE rotary matrix as per the RoFormer paper (https://arxiv.org/abs/2104.09864).
+
+    Args:
+        n_context_max: The maximum context window length.
+        n_head_dim: The attention head dimension.
+
+    Returns:
+        A tensor with shape ``(n_context_max, n_head_dim, n_head_dim)``.
+    """
+    R = torch.zeros((n_context_max, n_head_dim, n_head_dim))
+    for m in range(n_context_max):
+        for i in range(n_head_dim // 2):
+            theta_i = 10000.0 ** (-2.0 * (i - 1) / n_head_dim)
+            cos = np.cos(m * theta_i)
+            sin = np.sin(m * theta_i)
+            R[m, 2 * i, 2 * i] = cos
+            R[m, 2 * i, 2 * i + 1] = -sin
+            R[m, 2 * i + 1, 2 * i] = sin
+            R[m, 2 * i + 1, 2 * i + 1] = cos
+    return R

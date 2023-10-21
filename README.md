@@ -94,9 +94,13 @@ The following design choices were made in the design of the model:
     to generalize
     well to arbitrary sequence lengths (e.g., inference on sequences longer
     than those encountered during training).
+  * `ROPE` - "Rotary Position Embedding" encoding scheme proposed in
+    ["RoFormer: Enhanced Transformer with Rotary Position Embedding"]
+    (https://arxiv.org/abs/2104.09864). Parameterless and purports to generalize
+    well to arbitrary sequence lengths also.
   * `SINUSOIDAL` - the original positional encoding proposed in
     ["Attention is All You Need"](https://arxiv.org/abs/1706.03762). Also
-    parameterless, but purportedly generalizes less well than ALiBi.
+    parameterless, but purportedly generalizes less well the above.
   * `LEARNED_EMBEDDING` - learned positional encoding computed via an embedding
     over position indices. Provides better performance, but requires learning
     additional parameters and does not generalize.
@@ -117,6 +121,8 @@ this project.
   Architecture"](https://arxiv.org/abs/2002.04745)
 * ["Train Short, Test Long: Attention with Linear Biases Enables Input Length
   Extrapolation"](https://arxiv.org/abs/2108.12409)
+* ["RoFormer: Enhanced Transformer with Rotary Position
+  Embedding"](https://arxiv.org/abs/2104.09864)
 * [Llama 2](https://github.com/facebookresearch/llama)
 * [nanoGPT](https://github.com/karpathy/nanoGPT) and
   [tinyshakespeare](https://github.com/karpathy/char-rnn/blob/master/data/tinyshakespeare/input.txt)

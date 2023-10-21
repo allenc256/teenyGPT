@@ -67,6 +67,9 @@ class PositionalEncoding(Enum):
     LEARNED_SINUSOIDAL = 4
     """Learned positional encoding via sinusoids."""
 
+    ROPE = 5
+    """RoPE encoding, as per https://arxiv.org/abs/2104.09864."""
+
 
 @dataclass
 class ModelConfig:
