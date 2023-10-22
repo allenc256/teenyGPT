@@ -91,9 +91,9 @@ The feed-forward network Transformer block can be configured via the config
 setting `ffn_type`. The following values are supported:
 
 * `CLASSIC` - The classic block as defined in the original Transformer
-  paper[^1].
+  paper[[1]](#1)
 * `SWISH_GLU` - A block which uses a Gated Linear Unit with a Swish
-  function[^2]. Performs better but requires more parameters.
+  function[[2]](#2). Performs better but requires more parameters.
 
 ### Positional Encoding
 
@@ -127,8 +127,12 @@ The positional encoding scheme can be configured via the config setting
 The following papers, codebases, and blog posts were referenced when building
 this project.
 
-* ["Attention is All You Need"](https://arxiv.org/abs/1706.03762)
-* ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202)
+<a id="1">[1]</a>
+["Attention is All You Need"](https://arxiv.org/abs/1706.03762)
+
+<a id="2">[2]</a>
+["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202)
+
 * ["On Layer Normalization in the Transformer
   Architecture"](https://arxiv.org/abs/2002.04745)
 * ["Train Short, Test Long: Attention with Linear Biases Enables Input Length
@@ -140,6 +144,3 @@ this project.
   [tinyshakespeare](https://github.com/karpathy/char-rnn/blob/master/data/tinyshakespeare/input.txt)
   by Andrej Karpathy.
 * [llama-from-scratch](https://github.com/bkitano/llama-from-scratch) by Brian Kitano
-
-[^1]: ["Attention is All You Need"](https://arxiv.org/abs/1706.03762)
-[^2]: ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202)
