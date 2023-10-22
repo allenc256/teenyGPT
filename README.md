@@ -90,8 +90,8 @@ The following design choices were made in the design of the model:
 The feed-forward network Transformer block can be configured via the config
 setting `ffn_type`. The following values are supported:
 
-* `CLASSIC` - The classic block as defined in the original Transformer paper
-  [^1].
+* `CLASSIC` - The classic block as defined in the original Transformer
+  paper[^1].
 * `SWISH_GLU` - A block which uses a Gated Linear Unit with a Swish
   function[^2]. Performs better but requires more parameters.
 
@@ -141,5 +141,5 @@ this project.
   by Andrej Karpathy.
 * [llama-from-scratch](https://github.com/bkitano/llama-from-scratch) by Brian Kitano
 
-[^1] ["Attention is All You Need"](https://arxiv.org/abs/1706.03762)
-[^2] ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202)
+[^1]: ["Attention is All You Need"](https://arxiv.org/abs/1706.03762)
+[^2]: ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202)
