@@ -136,8 +136,13 @@ via the config setting `layer_norm_type`. The following values are supported:
 ### Llama 2
 
 The [Llama 2](https://github.com/facebookresearch/llama) architecture can be
-replicated by setting `ffn_type` to `SWISH_GLU`, `positional_encoding` to
-`ROPE`, and `layer_norm_type` to `RMS`.
+replicated by setting:
+
+```
+ffn_type=SWISH_GLU
+positional_encoding=ROPE
+layer_norm_type=RMS
+```
 
 ## References
 
