@@ -101,9 +101,9 @@ setting `ffn_type`. The following values are supported:
 The positional encoding scheme can be configured via the config setting
 `positional_encoding`. The following values are supported:
 
-* `SINUSOIDAL` - the original positional encoding proposed in
-  ["Attention is All You Need"](https://arxiv.org/abs/1706.03762). Also
-  parameterless, but purportedly generalizes less well the above.
+* `SINUSOIDAL` - the original positional encoding proposed in ["Attention is
+  All You Need"](https://arxiv.org/abs/1706.03762). Does not require learning
+  any parameters.
 * `ALIBI` - "Attention w/ Linear Biases" encoding scheme proposed in
   ["Train Short, Test Long: Attention with Linear Biases Enables Input Length
   Extrapolation"](https://arxiv.org/abs/2108.12409). Parameterless and purports
@@ -119,8 +119,8 @@ The positional encoding scheme can be configured via the config setting
   additional parameters and does not generalize.
 * `LEARNED_SINUSOIDAL` - learned positional encoding computed via a linear
   layer over sinusoids. Provides best performance, but requires learning
-  additional parameters. Generalization to arbitrary sequence lengths has not
-  been tested.
+  a small number of additional parameters. Generalization to arbitrary sequence
+  lengths has not been tested but is expected to be similar to `SINUSOIDAL`.
 * `NONE` - no positional encoding.
 
 ### Layer Normalization
