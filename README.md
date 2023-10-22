@@ -73,42 +73,54 @@ Marry, so I know much my mother,
 But ere to lordshing, spirits of my y lord.
 ```
 
-## Model Details
+## Model
 
 The following design choices were made in the design of the model:
 
 * Attention is computed using the pytorch function
   `scaled_dot_product_attention` to take advantage of pytorch-optimized kernels
   for attention.
-* Feed-forward networks use the Swish GLU variant described in ["GLU Variants
-  Improve Transformer"](https://arxiv.org/abs/2002.05202) as this appears to
-  improve performance (and is what is used in Llama 2).
 * We use pre-layer-norm rather than post-layer-norm as
   [research](https://arxiv.org/abs/2002.04745) suggests pre-LN is easier to
   train. In practice, many production-scale modules such as Llama 2 seem to
   favor pre-LN.
-* The following positional encoding implementations are provided:
-  * `ALIBI` - "Attention w/ Linear Biases" encoding scheme proposed in
-    ["Train Short, Test Long: Attention with Linear Biases Enables Input Length
-    Extrapolation"](https://arxiv.org/abs/2108.12409). Parameterless and purports
-    to generalize
-    well to arbitrary sequence lengths (e.g., inference on sequences longer
-    than those encountered during training).
-  * `ROPE` - "Rotary Position Embedding" encoding scheme proposed in
-    ["RoFormer: Enhanced Transformer with Rotary Position Embedding"]
-    (https://arxiv.org/abs/2104.09864). Parameterless and purports to generalize
-    well to arbitrary sequence lengths also.
-  * `SINUSOIDAL` - the original positional encoding proposed in
-    ["Attention is All You Need"](https://arxiv.org/abs/1706.03762). Also
-    parameterless, but purportedly generalizes less well the above.
-  * `LEARNED_EMBEDDING` - learned positional encoding computed via an embedding
-    over position indices. Provides better performance, but requires learning
-    additional parameters and does not generalize.
-  * `LEARNED_SINUSOIDAL` - learned positional encoding computed via a linear
-    layer over sinusoids. Provides best performance, but requires learning
-    additional parameters. Generalization to arbitrary sequence lengths has not
-    been tested.
-  * `NONE` - no positional encoding.
+
+### Feed-Forward Network
+
+The feed-forward network Transformer block can be configured via the config
+setting `ffn_type`. The following values are supported:
+
+* `CLASSIC` - The "classic" block as defined in the ["Attention is All You
+  Need"] (https://arxiv.org/abs/1706.03762).
+* `SWISH_GLU` - "SwiGLU" variant defined in ["GLU Variants Improve
+  Transformer"](https://arxiv.org/abs/2002.05202).
+
+### Positional Encoding
+
+The positional encoding scheme can be configured via the config setting
+`positional_encoding`. The following values are supported:
+
+* `SINUSOIDAL` - the original positional encoding proposed in
+  ["Attention is All You Need"](https://arxiv.org/abs/1706.03762). Also
+  parameterless, but purportedly generalizes less well the above.
+* `ALIBI` - "Attention w/ Linear Biases" encoding scheme proposed in
+  ["Train Short, Test Long: Attention with Linear Biases Enables Input Length
+  Extrapolation"](https://arxiv.org/abs/2108.12409). Parameterless and purports
+  to generalize
+  well to arbitrary sequence lengths (e.g., inference on sequences longer
+  than those encountered during training).
+* `ROPE` - "Rotary Position Embedding" encoding scheme proposed in
+  ["RoFormer: Enhanced Transformer with Rotary Position Embedding"]
+  (https://arxiv.org/abs/2104.09864). Parameterless and purports to generalize
+  well to arbitrary sequence lengths also.
+* `LEARNED_EMBEDDING` - learned positional encoding computed via an embedding
+  over position indices. Provides better performance, but requires learning
+  additional parameters and does not generalize.
+* `LEARNED_SINUSOIDAL` - learned positional encoding computed via a linear
+  layer over sinusoids. Provides best performance, but requires learning
+  additional parameters. Generalization to arbitrary sequence lengths has not
+  been tested.
+* `NONE` - no positional encoding.
 
 ## References
 

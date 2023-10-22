@@ -79,9 +79,15 @@ class Trainer:
             # Estimate loss and checkpoint if enough iterations have elapsed.
             if i % self.config.n_est_loss_iters == 0 or i == self.config.n_iters - 1:
                 self._estimate_losses_and_checkpoint()
-                progress.set_description(f"best_loss: {self._best_loss():0.2f}")
+                best_val_loss = self._best_val_loss()
+                val_loss = self.val_losses[-1]
+                train_loss = self.train_losses[-1]
+                progress.set_description(
+                    f"best: {best_val_loss:0.2f} "
+                    f"(train: {train_loss:0.2f}, val: {val_loss:0.2f})"
+                )
 
-    def _best_loss(self) -> float:
+    def _best_val_loss(self) -> float:
         return min(self.val_losses) if len(self.val_losses) > 0 else torch.inf
 
     def _estimate_losses_and_checkpoint(self) -> None:
@@ -89,7 +95,7 @@ class Trainer:
         val_loss = self.model.estimate_loss(self.datasets.val, self.config)
 
         # Save a checkpoint if validation loss has improved.
-        if val_loss <= self._best_loss():
+        if val_loss <= self._best_val_loss():
             self._save_checkpoint()
 
         self.train_losses.append(train_loss)

@@ -8,7 +8,7 @@ from torch import nn
 from torch.nn import functional as F
 from tqdm import tqdm  # type: ignore
 
-from .config import ModelConfig, TrainConfig, PositionalEncoding
+from .config import ModelConfig, TrainConfig, PositionalEncoding, FFNType
 from .dataset import Dataset
 
 
@@ -137,14 +137,32 @@ class NaiveModel(Model):
         return x
 
 
-class FeedForwardBlock(nn.Module):
+class ClassicFFNBlock(nn.Module):
     """
-    The attention feed-forward block.
+    "Classic" attention feed-forward network.
+
+    This implements the attention FFN block from the original Transformer paper.
+    """
+
+    def __init__(self, n_dim: int, p_dropout: float) -> None:
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(n_dim, n_dim),
+            nn.ReLU(),
+            nn.Linear(n_dim, n_dim),
+            nn.Dropout(p_dropout),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.layers(x)
+
+
+class SwishGatedLinearUnitFFNBlock(nn.Module):
+    """
+    Swish GLU attention feed-forward network.
 
     This block utilizes the FFN_SwiGLU function defined in "GLU Variants Improve
-    Transformer" (https://arxiv.org/pdf/2002.05202v1.pdf). This function was chosen
-    because it was used in Llama 2 and appears to provide some improvement over
-    simpler FFN schemes.
+    Transformer" (https://arxiv.org/pdf/2002.05202v1.pdf).
     """
 
     def __init__(self, n_dim: int, p_dropout: float) -> None:
@@ -173,6 +191,7 @@ class AttentionBlock(nn.Module):
 
     _attention_mask: torch.Tensor
     _rope_matrix: torch.Tensor | None
+    ffn: nn.Module
 
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
@@ -197,7 +216,13 @@ class AttentionBlock(nn.Module):
         self.norm_2 = nn.LayerNorm(config.n_dim)
 
         # Feed-forward network.
-        self.ffn = FeedForwardBlock(config.n_dim, config.p_dropout)
+        match config.ffn_type:
+            case FFNType.CLASSIC:
+                self.ffn = ClassicFFNBlock(config.n_dim, config.p_dropout)
+            case FFNType.SWISH_GLU:
+                self.ffn = SwishGatedLinearUnitFFNBlock(config.n_dim, config.p_dropout)
+            case _:
+                raise ValueError(f"unexpected ffn_type {config.ffn_type}")
 
         # Generate attention mask.
         if config.positional_encoding == PositionalEncoding.ALIBI:

@@ -71,6 +71,14 @@ class PositionalEncoding(Enum):
     """RoPE encoding, as per https://arxiv.org/abs/2104.09864."""
 
 
+class FFNType(Enum):
+    CLASSIC = 0
+    """Classic encoding, as per https://arxiv.org/abs/1706.03762."""
+
+    SWISH_GLU = 1
+    """SwiGLU encoding, as per https://arxiv.org/abs/2002.05202."""
+
+
 @dataclass
 class ModelConfig:
     """
@@ -85,6 +93,7 @@ class ModelConfig:
         n_context_max: The maximum context length that the model can handle.
         p_dropout: The dropout probability.
         positional_encoding: The positional encoding to use.
+        ffn_type: Feed-forward network type to use.
     """
 
     n_dim: int
@@ -94,6 +103,7 @@ class ModelConfig:
     n_context_max: int
     p_dropout: float
     positional_encoding: PositionalEncoding
+    ffn_type: FFNType
 
     @staticmethod
     def parse(section: configparser.SectionProxy, n_vocab: int) -> "ModelConfig":
@@ -108,6 +118,7 @@ class ModelConfig:
             n_context_max=int(section.get("n_context_max")),
             p_dropout=float(section.get("p_dropout")),
             positional_encoding=PositionalEncoding[section.get("positional_encoding")],
+            ffn_type=FFNType[section.get("ffn_type")],
         )
 
 
