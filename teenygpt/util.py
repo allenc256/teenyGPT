@@ -66,4 +66,4 @@ def _pretty_print_dict(d: dict, width: int = 30, indent: int = 0) -> None:
             print(f"{k:<{width}}:")
             _pretty_print_dict(v, width, indent + 4)
         else:
-            print(f"{k:<{width}}: {v.value if isinstance(v, Enum) else v}")
+            print(f"{k:<{width}}: {v.name if isinstance(v, Enum) else v}")

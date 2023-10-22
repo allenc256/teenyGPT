@@ -123,6 +123,22 @@ The positional encoding scheme can be configured via the config setting
   been tested.
 * `NONE` - no positional encoding.
 
+### Layer Normalization
+
+The layer normalization scheme within the Transformer block can be configured
+via the config setting `layer_norm_type`. The following values are supported:
+
+* `CLASSIC` - Classic layer normalization, as used in ["Attention is All You
+  Need"](https://arxiv.org/abs/1706.03762).
+* `RMS` - The layer normalization approach described in ["Root Mean Square
+  Layer Normalization"](https://arxiv.org/abs/1910.07467).
+
+### Llama 2
+
+The [Llama 2](https://github.com/facebookresearch/llama) architecture can be
+replicated by setting `ffn_type` to `SWISH_GLU`, `positional_encoding` to
+`ROPE`, and `layer_norm_type` to `RMS`.
+
 ## References
 
 The following papers, codebases, and blog posts were referenced when building
@@ -136,6 +152,7 @@ this project.
   Extrapolation"](https://arxiv.org/abs/2108.12409)
 * ["RoFormer: Enhanced Transformer with Rotary Position
   Embedding"](https://arxiv.org/abs/2104.09864)
+* ["Root Mean Square Layer Normalization"](https://arxiv.org/abs/1910.07467)
 * [Llama 2](https://github.com/facebookresearch/llama)
 * [nanoGPT](https://github.com/karpathy/nanoGPT) and
   [tinyshakespeare](https://github.com/karpathy/char-rnn/blob/master/data/tinyshakespeare/input.txt)

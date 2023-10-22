@@ -79,6 +79,17 @@ class FFNType(Enum):
     """SwiGLU encoding, as per https://arxiv.org/abs/2002.05202."""
 
 
+class LayerNormType(Enum):
+    NONE = 0
+    """No layer normalization."""
+
+    CLASSIC = 1
+    """Classic layer normalization."""
+
+    RMS = 2
+    """RMS layer normalization, as per https://arxiv.org/abs/1910.07467."""
+
+
 @dataclass
 class ModelConfig:
     """
@@ -94,6 +105,7 @@ class ModelConfig:
         p_dropout: The dropout probability.
         positional_encoding: The positional encoding to use.
         ffn_type: Feed-forward network type to use.
+        layer_norm_type: Type of layer norm to use.
     """
 
     n_dim: int
@@ -104,6 +116,7 @@ class ModelConfig:
     p_dropout: float
     positional_encoding: PositionalEncoding
     ffn_type: FFNType
+    layer_norm_type: LayerNormType
 
     @staticmethod
     def parse(section: configparser.SectionProxy, n_vocab: int) -> "ModelConfig":
@@ -119,6 +132,7 @@ class ModelConfig:
             p_dropout=float(section.get("p_dropout")),
             positional_encoding=PositionalEncoding[section.get("positional_encoding")],
             ffn_type=FFNType[section.get("ffn_type")],
+            layer_norm_type=LayerNormType[section.get("layer_norm_type")],
         )
 
 

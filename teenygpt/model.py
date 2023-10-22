@@ -8,7 +8,7 @@ from torch import nn
 from torch.nn import functional as F
 from tqdm import tqdm  # type: ignore
 
-from .config import ModelConfig, TrainConfig, PositionalEncoding, FFNType
+from .config import ModelConfig, TrainConfig, PositionalEncoding, FFNType, LayerNormType
 from .dataset import Dataset
 
 
@@ -176,6 +176,28 @@ class SwishGatedLinearUnitFFNBlock(nn.Module):
         return self.dropout(self.w2(F.silu(self.w1(x)) * self.w3(x)))
 
 
+class RMSLayerNorm(torch.nn.Module):
+    """
+    RMS layer normalization.
+
+    Implementation of "Root Mean Square Layer Normalization" (https://arxiv.org/abs/1910.07467).
+    """
+
+    def __init__(self, n_dim: int):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(n_dim))
+
+    def forward(self, x):
+        # Compute mean squared.
+        ms = (x**2).mean(-1, keepdim=True)
+
+        # Compute inverse root mean squared.
+        # N.B., need to add epsilon in case ms is zero for numerical stability
+        irms = torch.rsqrt(ms + 1e-8)
+
+        return x * self.weight * irms
+
+
 class AttentionBlock(nn.Module):
     """
     The multi-head attention block.
@@ -211,9 +233,8 @@ class AttentionBlock(nn.Module):
         self.linear_o = nn.Linear(config.n_dim, config.n_dim, bias=False)
 
         # Layer norms.
-        # N.B., it might be better to do layer norm w/out bias here.
-        self.norm_1 = nn.LayerNorm(config.n_dim)
-        self.norm_2 = nn.LayerNorm(config.n_dim)
+        self.norm_1 = self._init_layer_norm(config)
+        self.norm_2 = self._init_layer_norm(config)
 
         # Feed-forward network.
         match config.ffn_type:
@@ -301,6 +322,15 @@ class AttentionBlock(nn.Module):
 
         # Perform a final linear projection on the output.
         return self.linear_o(o)
+
+    def _init_layer_norm(self, config: ModelConfig) -> nn.Module:
+        match config.layer_norm_type:
+            case LayerNormType.NONE:
+                return nn.Identity()
+            case LayerNormType.CLASSIC:
+                return nn.LayerNorm(config.n_dim)
+            case LayerNormType.RMS:
+                return RMSLayerNorm(config.n_dim)
 
 
 class SinusoidalPositionalEncoding(nn.Module):
