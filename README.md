@@ -1,8 +1,8 @@
 # teenyGPT
 
 A small library which implements a Transformer from scratch using pytorch. This
-project is only meant to serve as a demonstration only and is not optimized for
-training large models on large datasets.
+project is only meant to serve as an experimental testbed only and is not
+optimized for training large models on large datasets.
 
 ## Dependencies
 
