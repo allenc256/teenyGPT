@@ -91,7 +91,7 @@ The feed-forward network Transformer block can be configured via the config
 setting `ffn_type`. The following values are supported:
 
 * `CLASSIC` - The "classic" block as defined in the ["Attention is All You
-  Need"] (https://arxiv.org/abs/1706.03762).
+  Need"](https://arxiv.org/abs/1706.03762).
 * `SWISH_GLU` - "SwiGLU" variant defined in ["GLU Variants Improve
   Transformer"](https://arxiv.org/abs/2002.05202).
 
