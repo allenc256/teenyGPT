@@ -129,7 +129,6 @@ this project.
 
 <a id="1">[1]</a>
 ["Attention is All You Need"](https://arxiv.org/abs/1706.03762)
-
 <a id="2">[2]</a>
 ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202)
 
