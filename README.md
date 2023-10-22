@@ -93,7 +93,8 @@ setting `ffn_type`. The following values are supported:
 * `CLASSIC` - The "classic" block as defined in the ["Attention is All You
   Need"](https://arxiv.org/abs/1706.03762).
 * `SWISH_GLU` - "SwiGLU" variant defined in ["GLU Variants Improve
-  Transformer"](https://arxiv.org/abs/2002.05202).
+  Transformer"](https://arxiv.org/abs/2002.05202). Performs better but
+  requires more parameters.
 
 ### Positional Encoding
 
@@ -110,9 +111,9 @@ The positional encoding scheme can be configured via the config setting
   well to arbitrary sequence lengths (e.g., inference on sequences longer
   than those encountered during training).
 * `ROPE` - "Rotary Position Embedding" encoding scheme proposed in
-  ["RoFormer: Enhanced Transformer with Rotary Position Embedding"]
-  (https://arxiv.org/abs/2104.09864). Parameterless and purports to generalize
-  well to arbitrary sequence lengths also.
+  ["RoFormer: Enhanced Transformer with Rotary Position
+  Embedding"](https://arxiv.org/abs/2104.09864). Parameterless and purports to
+  generalize well to arbitrary sequence lengths also.
 * `LEARNED_EMBEDDING` - learned positional encoding computed via an embedding
   over position indices. Provides better performance, but requires learning
   additional parameters and does not generalize.
