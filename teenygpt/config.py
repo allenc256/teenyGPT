@@ -51,7 +51,7 @@ class DatasetConfig:
         )
 
 
-class PositionalEncoding(Enum):
+class PositionalEncodingType(Enum):
     NONE = 0
     """No positional encoding. """
 
@@ -103,7 +103,7 @@ class ModelConfig:
         n_attn_layers: The number attention layers.
         n_context_max: The maximum context length that the model can handle.
         p_dropout: The dropout probability.
-        positional_encoding: The positional encoding to use.
+        positional_encoding_type: The positional encoding type to use.
         ffn_type: Feed-forward network type to use.
         layer_norm_type: Type of layer norm to use.
     """
@@ -114,7 +114,7 @@ class ModelConfig:
     n_attn_layers: int
     n_context_max: int
     p_dropout: float
-    positional_encoding: PositionalEncoding
+    positional_encoding_type: PositionalEncodingType
     ffn_type: FFNType
     layer_norm_type: LayerNormType
 
@@ -130,7 +130,9 @@ class ModelConfig:
             n_attn_layers=int(section.get("n_attn_layers")),
             n_context_max=int(section.get("n_context_max")),
             p_dropout=float(section.get("p_dropout")),
-            positional_encoding=PositionalEncoding[section.get("positional_encoding")],
+            positional_encoding_type=PositionalEncodingType[
+                section.get("positional_encoding_type")
+            ],
             ffn_type=FFNType[section.get("ffn_type")],
             layer_norm_type=LayerNormType[section.get("layer_norm_type")],
         )

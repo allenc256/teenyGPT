@@ -8,7 +8,13 @@ from torch import nn
 from torch.nn import functional as F
 from tqdm import tqdm  # type: ignore
 
-from .config import ModelConfig, TrainConfig, PositionalEncoding, FFNType, LayerNormType
+from .config import (
+    ModelConfig,
+    TrainConfig,
+    PositionalEncodingType,
+    FFNType,
+    LayerNormType,
+)
 from .dataset import Dataset
 
 
@@ -246,7 +252,7 @@ class AttentionBlock(nn.Module):
                 raise ValueError(f"unexpected ffn_type {config.ffn_type}")
 
         # Generate attention mask.
-        if config.positional_encoding == PositionalEncoding.ALIBI:
+        if config.positional_encoding_type == PositionalEncodingType.ALIBI:
             self._attention_mask = _generate_alibi_mask(
                 config.n_context_max, config.n_attn_heads
             )
@@ -254,7 +260,7 @@ class AttentionBlock(nn.Module):
             self._attention_mask = _generate_default_mask(config.n_context_max)
 
         # Generate RoPE matrix.
-        if config.positional_encoding == PositionalEncoding.ROPE:
+        if config.positional_encoding_type == PositionalEncodingType.ROPE:
             self._rope_matrix = _generate_rope_matrix(
                 config.n_context_max, self.n_head_dim
             )
@@ -392,16 +398,16 @@ class TransformerModel(Model):
         self.embedding = nn.Embedding(config.n_vocab, config.n_dim)
         self.unembedding = nn.Linear(config.n_dim, config.n_vocab)
 
-        match config.positional_encoding:
-            case PositionalEncoding.SINUSOIDAL:
+        match config.positional_encoding_type:
+            case PositionalEncodingType.SINUSOIDAL:
                 self.positional_encoding = SinusoidalPositionalEncoding(
                     config.n_context_max, config.n_dim
                 )
-            case PositionalEncoding.LEARNED_EMBEDDING:
+            case PositionalEncodingType.LEARNED_EMBEDDING:
                 self.positional_encoding = LearnedEmbeddingPositionalEncoding(
                     config.n_context_max, config.n_dim
                 )
-            case PositionalEncoding.LEARNED_SINUSOIDAL:
+            case PositionalEncodingType.LEARNED_SINUSOIDAL:
                 self.positional_encoding = LearnedSinusoidalPositionalEncoding(
                     config.n_context_max, config.n_dim
                 )

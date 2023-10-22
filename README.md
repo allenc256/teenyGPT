@@ -99,7 +99,7 @@ setting `ffn_type`. The following values are supported:
 ### Positional Encoding
 
 The positional encoding scheme can be configured via the config setting
-`positional_encoding`. The following values are supported:
+`positional_encoding_type`. The following values are supported:
 
 * `SINUSOIDAL` - the original positional encoding proposed in ["Attention is
   All You Need"](https://arxiv.org/abs/1706.03762). Does not require learning
@@ -139,9 +139,9 @@ The [Llama 2](https://github.com/facebookresearch/llama) architecture can be
 replicated by setting the following configuration parameters:
 
 ```
-ffn_type=SWISH_GLU           # use Swish GLU FFN blocks
-positional_encoding=ROPE     # use RoPE positional embeddings
-layer_norm_type=RMS          # use RMS layer norm
+ffn_type=SWISH_GLU                # use Swish GLU FFN blocks
+positional_encoding_type=ROPE     # use RoPE positional embeddings
+layer_norm_type=RMS               # use RMS layer norm
 ```
 
 ## References
