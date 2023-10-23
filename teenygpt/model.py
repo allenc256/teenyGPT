@@ -304,15 +304,9 @@ class AttentionBlock(nn.Module):
             n_batch, n_context, self.config.n_attn_heads, self.n_head_dim
         ).permute(0, 2, 1, 3)
 
-        # Apply RoPE matrix if enabled.
-        if self._rope_matrix is not None:
-            q_proj_heads = q_proj_heads.unsqueeze(-1)
-            q_proj_heads = self._rope_matrix @ q_proj_heads
-            q_proj_heads = q_proj_heads.squeeze(-1)
-
-            k_proj_heads = k_proj_heads.unsqueeze(-1)
-            k_proj_heads = self._rope_matrix @ k_proj_heads
-            k_proj_heads = k_proj_heads.squeeze(-1)
+        # Apply RoPE if enabled.
+        q_proj_heads = self._apply_rope_encoding_if_enabled(q_proj_heads)
+        k_proj_heads = self._apply_rope_encoding_if_enabled(k_proj_heads)
 
         # Apply our attention function.
         o_heads = F.scaled_dot_product_attention(
@@ -337,6 +331,14 @@ class AttentionBlock(nn.Module):
                 return nn.LayerNorm(config.n_dim)
             case LayerNormType.RMS:
                 return RMSLayerNorm(config.n_dim)
+
+    def _apply_rope_encoding_if_enabled(self, x: torch.Tensor) -> torch.Tensor:
+        if self._rope_matrix is None:
+            return x
+        x = x.unsqueeze(-1)
+        x = self._rope_matrix @ x
+        x = x.squeeze(-1)
+        return x
 
 
 class SinusoidalPositionalEncoding(nn.Module):
@@ -372,6 +374,11 @@ class LearnedEmbeddingPositionalEncoding(nn.Module):
 class LearnedSinusoidalPositionalEncoding(nn.Module):
     """
     Learned sinusoidal positional encoding.
+
+    This means applying a linear layer to a pre-generated sinusoidal encoding tensor.
+    We hypothesize this makes it easier for the model to encode the positional
+    information within the hidden dimension (e.g., possibly by choosing an appropriate
+    subspace of the hidden dimension).
     """
 
     def __init__(
@@ -398,6 +405,10 @@ class TransformerModel(Model):
         self.embedding = nn.Embedding(config.n_vocab, config.n_dim)
         self.unembedding = nn.Linear(config.n_dim, config.n_vocab)
 
+        # Some positional encodings are implemented as a separate layer while some are
+        # implemented directly within the attention block. The following code
+        # initializes positional encodings that are implemented via a separate layer
+        # only.
         match config.positional_encoding_type:
             case PositionalEncodingType.SINUSOIDAL:
                 self.positional_encoding = SinusoidalPositionalEncoding(
