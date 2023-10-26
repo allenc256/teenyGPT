@@ -1,6 +1,8 @@
 import configparser
+import json
 from dataclasses import dataclass
 from enum import Enum
+from typing import cast
 
 
 @dataclass
@@ -150,6 +152,10 @@ class TrainConfig:
         n_est_loss_iters: The number of training iterations to execute before
             estimating loss.
         n_est_loss_batches: The number of batches to use to estimate loss.
+        lr_max: Maximum learning rate.
+        lr_min: Minimum learning rate.
+        weight_decay: Weight decay.
+        betas: AdamW optimizer betas.
         checkpoint_file: File path specifying where checkpoints should be written to.
             If None, checkpoints will not be written.
     """
@@ -159,6 +165,10 @@ class TrainConfig:
     n_context: int
     n_est_loss_iters: int
     n_est_loss_batches: int
+    lr_max: float
+    lr_min: float
+    weight_decay: float
+    betas: tuple[float, float]
     checkpoint_file: str | None
 
     @staticmethod
@@ -172,5 +182,9 @@ class TrainConfig:
             n_context=int(section.get("n_context")),
             n_est_loss_iters=int(section.get("n_est_loss_iters")),
             n_est_loss_batches=int(section.get("n_est_loss_batches")),
+            lr_max=float(section.get("lr_max")),
+            lr_min=float(section.get("lr_min")),
+            weight_decay=float(section.get("weight_decay")),
+            betas=cast(tuple[float, float], tuple(json.loads(section.get("betas")))),
             checkpoint_file=section.get("checkpoint_file"),
         )

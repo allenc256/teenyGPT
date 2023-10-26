@@ -44,7 +44,15 @@ class Trainer:
         self.model = model
         self.datasets = datasets
         self.config = config
-        self.optimizer = torch.optim.Adam(model.parameters())
+        self.optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=config.lr_max,
+            betas=config.betas,
+            fused=torch.cuda.is_available(),
+        )
+        self.lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=config.n_iters, eta_min=config.lr_min
+        )
         self.iteration = iteration
         self.train_losses = train_losses or []
         self.val_losses = val_losses or []
@@ -65,16 +73,15 @@ class Trainer:
                 self.config.n_batch, self.config.n_context
             )
 
-            # Zero out gradients.
-            self.optimizer.zero_grad()
-
             # Forward pass.
             logits = self.model(xs)
             loss = self.model.loss(logits, ys)
 
             # Backward pass.
+            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+            self.lr_scheduler.step()
 
             # Estimate loss and checkpoint if enough iterations have elapsed.
             if i % self.config.n_est_loss_iters == 0 or i == self.config.n_iters - 1:

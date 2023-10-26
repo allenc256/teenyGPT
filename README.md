@@ -23,7 +23,7 @@ python train.py
 All dataset, model, and training parameters used for training are specified in a
 single config file (`config.ini`). The defaults provided will train a small 4
 layer, 256 token context length model over `data/tiny_shakespeare.txt` (this
-takes around ~1 minute or so on a RTX 4090).
+takes around < 2 minutes or so on a RTX 4090).
 
 This project also includes a generation script (`generate.py`) which can be used
 to generate sample continuations:

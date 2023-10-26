@@ -9,11 +9,11 @@ from torch.nn import functional as F
 from tqdm import tqdm  # type: ignore
 
 from .config import (
-    ModelConfig,
-    TrainConfig,
-    PositionalEncodingType,
     FFNType,
     LayerNormType,
+    ModelConfig,
+    PositionalEncodingType,
+    TrainConfig,
 )
 from .dataset import Dataset
 
@@ -40,6 +40,12 @@ class Model(nn.Module):
         Returns the total number of parameter elements used by the model.
         """
         return sum(m.numel() for m in self.parameters())
+
+    def params_decay(self) -> list[nn.parameter.Parameter]:
+        return [p for p in self.parameters() if p.dim() >= 2]
+
+    def params_no_decay(self) -> list[nn.parameter.Parameter]:
+        return [p for p in self.parameters() if p.dim() < 2]
 
     def loss(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """
