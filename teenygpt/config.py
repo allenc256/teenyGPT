@@ -9,31 +9,35 @@ from typing import cast
 class DatasetConfig:
     """
     Configuration for generating dataset splits.
-
-    Attributes:
-        input_file: File containing input text.
-        input_file_encoding: Encoding of input text file.
-        sentencepiece_model_file: SentencePiece model file to use for encoding text into
-            tokens. If unspecified, a character-level encoding will be used instead of
-            a subword encoding.
-        chars_per_chunk: Chunk size, in characters, that the input text should be split
-            into.
-        fraction_train: The fraction of chunks that should be assigned to the train
-            dataset split.
-        fraction_val: The fraction of chunks that should be assigned to the validation
-            dataset split.
-        random_seed: The random seed (passed to ``random.Random()``) that should be
-            used when deciding how to assign chunks to splits. When specified, this
-            should guarantee determinism when generating dataset splits.
     """
 
     input_file: str
+    """File containing input text."""
+
     input_file_encoding: str
+    """Encoding of the input text file."""
+
     tokens_per_chunk: int
+    """Chunk size, in tokens, that the input text should be split into."""
+
     fraction_train: float
+    """Fraction of chunks that should be assigned to the train dataset split."""
+
     fraction_val: float
+    """Fraction of chunks that should be assigned to the validation dataset split."""
+
     sentencepiece_model_file: str | None = None
+    """
+    SentencePiece model file to use for encoding text into tokens. If unspecified,
+    a character-level encoding will be used instead of a subword encoding.
+    """
+
     random_seed: int | None = None
+    """
+    The random seed (passed to ``random.Random()``) that should be used when deciding
+    how to assign chunks to splits. When specified, this should guarantee determinism
+    when generating dataset splits.
+    """
 
     @staticmethod
     def parse(section: configparser.SectionProxy) -> "DatasetConfig":
@@ -96,29 +100,37 @@ class LayerNormType(Enum):
 class ModelConfig:
     """
     Configuration for a transformer model.
-
-    Attributes:
-        n_dim: The number of embedding dimensions. This must be evenly divisible by the
-            number of attention heads (``n_attn_heads``).
-        n_vocab: The maximum vocabulary size.
-        n_attn_heads: The number of attention heads.
-        n_attn_layers: The number attention layers.
-        n_context_max: The maximum context length that the model can handle.
-        p_dropout: The dropout probability.
-        positional_encoding_type: The positional encoding type to use.
-        ffn_type: Feed-forward network type to use.
-        layer_norm_type: Type of layer norm to use.
     """
 
     n_dim: int
+    """
+    The number of embedding dimensions. This must be evenly divisible by the number of
+    attention heads (``n_attn_heads``).
+    """
+
     n_vocab: int
+    """The maximum vocabulary size."""
+
     n_attn_heads: int
+    """The number of attention heads."""
+
     n_attn_layers: int
+    """The number of attention layers."""
+
     n_context_max: int
+    """The maximum context length of the model."""
+
     p_dropout: float
+    """The dropout probability."""
+
     positional_encoding_type: PositionalEncodingType
+    """The type of positional encoding to use."""
+
     ffn_type: FFNType
+    """The type of feed-forward network block to use."""
+
     layer_norm_type: LayerNormType
+    """The type of layer norm to use."""
 
     @staticmethod
     def parse(section: configparser.SectionProxy, n_vocab: int) -> "ModelConfig":
@@ -144,32 +156,40 @@ class ModelConfig:
 class TrainConfig:
     """
     Configuration for training a transformer model.
-
-    Attributes:
-        n_iters: The number of training iterations.
-        n_context: The context window length.
-        n_batch: The batch size for the model.
-        n_est_loss_iters: The number of training iterations to execute before
-            estimating loss.
-        n_est_loss_batches: The number of batches to use to estimate loss.
-        lr_max: Maximum learning rate.
-        lr_min: Minimum learning rate.
-        weight_decay: Weight decay.
-        betas: AdamW optimizer betas.
-        checkpoint_file: File path specifying where checkpoints should be written to.
-            If None, checkpoints will not be written.
     """
 
     n_iters: int
+    """Number of iterations to train for."""
+
     n_batch: int
+    """Training minibatch size."""
+
     n_context: int
+    """Context window length."""
+
     n_est_loss_iters: int
+    """Number of iterations before estimating training/validation loss."""
+
     n_est_loss_batches: int
+    """Number of minibatches to use to estimate training/validation loss."""
+
     lr_max: float
+    """The maximum learning rate."""
+
     lr_min: float
+    """The minimum learning rate."""
+
     weight_decay: float
+    """The weight decay to use for optimization."""
+
     betas: tuple[float, float]
+    """The beta parameters to use for the AdamW optimizer."""
+
     checkpoint_file: str | None
+    """
+    File path where model checkpoints should be written to. If None, checkpoints
+    will not be written.
+    """
 
     @staticmethod
     def parse(section: configparser.SectionProxy) -> "TrainConfig":
