@@ -48,6 +48,7 @@ class Trainer:
             model.parameters(),
             lr=config.lr_max,
             betas=config.betas,
+            weight_decay=config.weight_decay,
             fused=torch.cuda.is_available(),
         )
         self.lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
