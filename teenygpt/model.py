@@ -166,6 +166,15 @@ class ClassicFFNBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the FFN block.
+
+        Args:
+            x: Input tensor of shape ``(*, n_dim)``.
+
+        Returns:
+            Output tensor with same shape as input.
+        """
         return self.layers(x)
 
 
@@ -185,6 +194,15 @@ class SwishGatedLinearUnitFFNBlock(nn.Module):
         self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the FFN block.
+
+        Args:
+            x: Input tensor of shape ``(*, n_dim)``.
+
+        Returns:
+            Output tensor with same shape as input.
+        """
         return self.dropout(self.w2(F.silu(self.w1(x)) * self.w3(x)))
 
 
@@ -200,6 +218,15 @@ class RMSLayerNorm(torch.nn.Module):
         self.weight = nn.Parameter(torch.ones(n_dim))
 
     def forward(self, x):
+        """
+        Applies RMS layer norm.
+
+        Args:
+            x: Input tensor of shape ``(*, n_dim)``.
+
+        Returns:
+            Output tensor with same shape as input.
+        """
         # Compute mean squared.
         ms = (x**2).mean(-1, keepdim=True)
 
@@ -274,6 +301,16 @@ class AttentionBlock(nn.Module):
             self._rope_matrix = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the attention block.
+
+        Args:
+            x: Input tensor of shape ``(n_batch, n_context, n_dim)`` where
+                ``n_context`` is the context window length.
+
+        Returns:
+            Output tensor with same shape as input.
+        """
         # Attention residual block.
         x = x + self._multihead_attention(self.norm_1(x))
 
@@ -358,6 +395,16 @@ class SinusoidalPositionalEncoding(nn.Module):
         self.encoding = _generate_sinusoidal_encoding(n_context_max, n_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the positional encoding.
+
+        Args:
+            x: Input tensor of shape ``(n_batch, n_context, n_dim)`` where
+                ``n_context`` is the context window length.
+
+        Returns:
+            Output tensor with same shape as input.
+        """
         n_batch, n_context, n_dim = x.shape
         return x + self.encoding[:n_context, :].unsqueeze(0)
 
@@ -373,6 +420,16 @@ class LearnedEmbeddingPositionalEncoding(nn.Module):
         self.positions = torch.arange(n_context_max, dtype=torch.int64).unsqueeze(0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the positional encoding.
+
+        Args:
+            x: Input tensor of shape ``(n_batch, n_context, n_dim)`` where
+                ``n_context`` is the context window length.
+
+        Returns:
+            Output tensor with same shape as input.
+        """
         n_batch, n_context, n_dim = x.shape
         return x + self.embedding(self.positions[:, :n_context])
 
@@ -395,6 +452,16 @@ class LearnedSinusoidalPositionalEncoding(nn.Module):
         self.positions = _generate_sinusoidal_encoding(n_context_max, n_dim_sinusoid)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the positional encoding.
+
+        Args:
+            x: Input tensor of shape ``(n_batch, n_context, n_dim)`` where
+                ``n_context`` is the context window length.
+
+        Returns:
+            Output tensor with same shape as input.
+        """
         n_batch, n_context, n_dim = x.shape
         return x + self.linear(self.positions[:n_context, :]).unsqueeze(0)
 
@@ -443,6 +510,19 @@ class TransformerModel(Model):
         self.dropout = nn.Dropout(config.p_dropout)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the transformer model.
+
+        Args:
+            x: Input tensor of shape ``(n_batch, n_context)`` where ``n_context``
+                is the context window length. The input tensor must have an integer
+                type. The input tensor must contain token indices between 0 and
+                ``n_vocab``.
+
+        Returns:
+            Output tensor with shape ``(n_batch, n_context, n_vocab)`` containing
+            unnormalized logits.
+        """
         x = self.embedding(inputs)
         x = self.positional_encoding(x)
         x = self.dropout(x)
